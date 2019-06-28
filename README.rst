@@ -1,7 +1,7 @@
-python-open-source-template
-===========================
+noaa-wildfires
+==============
 
-A template for open-source Python software repositories
+git@github.com:datadesk/noaa-wildfires.git
 
 Contributing
 ------------
