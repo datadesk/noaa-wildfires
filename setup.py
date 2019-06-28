@@ -9,7 +9,7 @@ def read(fname):
 
 setup(
     name='noaa-wildfires',
-    version='0.0.1',
+    version='0.0.2',
     description="Download wildfires data from NOAA satellites",
     long_description=read('README.rst'),
     author='Los Angeles Times Data Desk',

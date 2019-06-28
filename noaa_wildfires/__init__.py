@@ -1,6 +1,7 @@
-import os
+import io
 import csv
 import fiona
+import zipfile
 import requests
 from geojson import Feature, FeatureCollection, Point
 
@@ -43,20 +44,22 @@ def get_hms_smoke():
 
 
 def _parse_shapefiles(files):
-    # Download shapefiles
-    for name in files:
-        r = requests.get(f"https://satepsanone.nesdis.noaa.gov/pub/FIRE/HMS/GIS/{name}")
-        with open(name, 'wb') as f:
-            f.write(r.content)
+    """
+    Download the provided list of shapefile components and convert them to GeoJSON.
+    """
+    # Create in-memory file
+    buffer = io.BytesIO()
 
-    # Parse shapefiles
-    f = fiona.open(files[0])
+    # Turn it into a zipfile
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        # Download each piece of the shapefile ...
+        for name in files:
+            r = requests.get(f"https://satepsanone.nesdis.noaa.gov/pub/FIRE/HMS/GIS/{name}")
+            # ... and add it to the in-memory zipfile
+            zf.writestr(name, bytes(r.content))
 
-    # Create GeoJSON
-    collection = FeatureCollection([Feature(geometry=d['geometry'], properties=d) for d in f])
+    # Feed the in-memory file to fiona, which can read the shapefile
+    shp = fiona.BytesCollection(buffer.getvalue())
 
-    # Remove files
-    [os.remove(name) for name in files]
-
-    # Return data
-    return collection
+    # Convert the shapefile to GeoJSON and return it
+    return FeatureCollection([Feature(geometry=d['geometry'], properties=d) for d in shp])
