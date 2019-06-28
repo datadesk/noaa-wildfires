@@ -21,6 +21,7 @@ setup(
         "fiona",
         "geojson",
         "click",
+        "requests"
     ],
     entry_points="""
         [console_scripts]
