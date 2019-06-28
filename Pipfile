@@ -9,6 +9,10 @@ flake8 = "*"
 coverage = "*"
 
 [packages]
+fiona = "*"
+click = "*"
+geojson = "*"
+requests = "*"
 
 [requires]
 python_version = "3.6"
