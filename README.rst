@@ -18,7 +18,7 @@ Command-line usage
 
     Usage: noaawildfires [OPTIONS] COMMAND [ARGS]...
 
-      A command-line interface for downloading smoke and wilfire data from NOAA.
+      A command-line interface for downloading wildfires data from NOAA.
 
       Returns GeoJSON.
 

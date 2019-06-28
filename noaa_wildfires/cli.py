@@ -5,7 +5,7 @@ from noaa_wildfires import get_hms_fires, get_hms_smoke
 @click.group()
 def cmd():
     """
-    A command-line interface for downloading smoke and wilfire data from NOAA.
+    A command-line interface for downloading wildfires data from NOAA.
 
     Returns GeoJSON.
     """
