@@ -1,7 +1,7 @@
 noaa-wildfires
 ==============
 
-git@github.com:datadesk/noaa-wildfires.git
+Download wildfires data from NOAA satellites
 
 Contributing
 ------------
