@@ -1,0 +1,3 @@
+[run]
+include =
+    noaa_wildfires/__init__.py
