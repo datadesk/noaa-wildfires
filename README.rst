@@ -8,7 +8,7 @@ Installation
 
 ::
 
-    $ pipenv install noaa_wildfires
+    $ pipenv install noaa-wildfires
 
 
 Command-line usage
