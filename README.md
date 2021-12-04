@@ -1,5 +1,7 @@
 Download wildfires data from NOAA satellites
 
+Hourly scrapes powered by a GitHub Action are stored in the `data` directory.
+
 ## Installation
 
 ```sh
