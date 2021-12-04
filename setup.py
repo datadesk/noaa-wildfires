@@ -9,13 +9,13 @@ def read(fname):
 
 setup(
     name='noaa-wildfires',
-    version='0.0.2',
+    version='0.0.3',
     description="Download wildfires data from NOAA satellites",
     long_description=read('README.md'),
     long_description_content_type='text/markdown',
-    author='Los Angeles Times Data Desk',
-    author_email='datadesk@latimes.com',
-    url='http://www.github.com/datadesk/noaa-wildfires',
+    author='Ben Welsh',
+    author_email='b@palewi.re',
+    url='http://www.github.com/palewire/noaa-wildfires',
     license="MIT",
     packages=("noaa_wildfires",),
     install_requires=[
@@ -33,11 +33,13 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'License :: OSI Approved :: MIT License',
     ],
     project_urls={
-        'Maintainer': 'https://github.com/datadesk',
-        'Source': 'https://github.com/datadesk/noaa-wildfires',
-        'Tracker': 'https://github.com/datadesk/noaa-wildfires/issues'
+        'Maintainer': 'https://github.com/palewire',
+        'Source': 'https://github.com/palewire/noaa-wildfires',
+        'Tracker': 'https://github.com/palewire/noaa-wildfires/issues'
     },
 )
