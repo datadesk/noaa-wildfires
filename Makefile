@@ -7,6 +7,9 @@ test:
 	pipenv run coverage run test.py
 	pipenv run coverage report -m
 
+scrape:
+	pipenv run noaawildfires hms-fires > data/hms-fires.json
+	pipenv run noaawildfires hms-smoke > data/hms-smoke.json
 
 ship:
 	rm -rf build/
