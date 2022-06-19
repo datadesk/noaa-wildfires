@@ -2,7 +2,7 @@ name: Scrape
 on:
   workflow_dispatch:
   schedule:
-    - cron: '10 * * * *'
+    - cron: '10 6 * * *'
 
 jobs:
   scrape:
@@ -17,13 +17,14 @@ jobs:
         name: Install Python, pipenv and Pipfile packages
         uses: palewire/install-python-pipenv-pipfile@v2
         with:
-          python-version: 3.8
+          python-version: 3.9
 
       - id: make
         name: Run make command
         run: |
           pipenv run python setup.py install
-          make scrape
+          pipenv run noaawildfires hms-fires > data/hms-fires.json
+          pipenv run noaawildfires hms-smoke > data/hms-smoke.json
         shell: bash
 
       - id: commit
