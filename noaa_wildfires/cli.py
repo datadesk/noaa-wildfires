@@ -1,4 +1,5 @@
 import click
+
 from noaa_wildfires import get_hms_fires, get_hms_smoke
 
 
@@ -22,5 +23,5 @@ def hms_smoke():
     click.echo(get_hms_smoke())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cmd()

@@ -1,4 +1,5 @@
 import os
+
 from setuptools import setup
 
 
@@ -39,39 +40,34 @@ def local_version(version):
 
 
 setup(
-    name='noaa-wildfires',
+    name="noaa-wildfires",
     description="Download wildfires data from NOAA satellites",
-    long_description=read('README.md'),
-    long_description_content_type='text/markdown',
-    author='Ben Welsh',
-    author_email='b@palewi.re',
-    url='https://palewi.re/docs/noaa-wildfires',
+    long_description=read("README.md"),
+    long_description_content_type="text/markdown",
+    author="Ben Welsh",
+    author_email="b@palewi.re",
+    url="https://palewi.re/docs/noaa-wildfires",
     license="MIT",
     packages=("noaa_wildfires",),
-    install_requires=[
-        "fiona",
-        "geojson",
-        "click",
-        "requests"
-    ],
+    install_requires=["fiona", "geojson", "click", "requests"],
     entry_points="""
         [console_scripts]
         noaawildfires=noaa_wildfires.cli:cmd
     """,
     use_scm_version={"version_scheme": version_scheme, "local_scheme": local_version},
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Programming Language :: Python',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
-        'License :: OSI Approved :: MIT License',
+        "Development Status :: 5 - Production/Stable",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "License :: OSI Approved :: MIT License",
     ],
     project_urls={
-        'Maintainer': 'https://github.com/datadesk',
-        'Source': 'https://github.com/datadesk/noaa-wildfires',
-        'Tracker': 'https://github.com/datadesk/noaa-wildfires/issues'
+        "Maintainer": "https://github.com/datadesk",
+        "Source": "https://github.com/datadesk/noaa-wildfires",
+        "Tracker": "https://github.com/datadesk/noaa-wildfires/issues",
     },
 )
