@@ -1,4 +1,4 @@
-### Links
+### Other resources
 
 * Docs: [palewi.re/docs/noaa-wildfires/](https://palewi.re/docs/noaa-wildfires/)
 * Issues: [github.com/datadesk/noaa-wildfires/issues](https://github.com/datadesk/noaa-wildfires/issues)
