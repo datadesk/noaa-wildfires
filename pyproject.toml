@@ -29,6 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
 ]
 
 [project.urls]
@@ -59,6 +60,9 @@ docs = [
 
 [tool.setuptools]
 packages = ["noaa_wildfires"]
+
+[tool.setuptools.package-data]
+noaa_wildfires = ["py.typed"]
 
 [tool.setuptools_scm]
 
