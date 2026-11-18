@@ -14,15 +14,17 @@ import shapefile
 from geojson import Feature, FeatureCollection, Point
 
 from .errors import NOAADataError, NOAAError
-from .fetch import DEFAULT_TIMEOUT, download
+from .fetch import DEFAULT_TIMEOUT, Fetcher, Reply, download
 from .records import HmsFire, HmsSmoke
 
 __all__ = [
     "DEFAULT_TIMEOUT",
+    "Fetcher",
     "HmsFire",
     "HmsSmoke",
     "NOAADataError",
     "NOAAError",
+    "Reply",
     "fire_url",
     "get_hms_fire_records",
     "get_hms_fires",
@@ -44,6 +46,8 @@ def get_hms_fires(
     date: datetime.date | str | None = None,
     verbose: bool = False,
     timeout: float = DEFAULT_TIMEOUT,
+    *,
+    get: Fetcher | None = None,
 ) -> FeatureCollection:
     """Get fires from the Hazard Mapping System satellites.
 
@@ -57,6 +61,9 @@ def get_hms_fires(
             "2026-11-17". Defaults to the latest day with detections.
         verbose: Print each request to standard error. Defaults to False.
         timeout: Seconds to wait for NOAA on each try. Defaults to 60.
+        get: A function that makes the web request, such as ``requests.get``
+            (the default). Pass your own to add retries, logging or custom
+            headers. It is called as ``get(url, timeout=seconds)``.
 
     Returns:
         A GeoJSON feature collection with one point for each fire. The
@@ -81,14 +88,17 @@ def get_hms_fires(
         >>> import noaa_wildfires
         >>> data = noaa_wildfires.get_hms_fires()
         >>> data = noaa_wildfires.get_hms_fires("2026-11-17", timeout=30)
+        >>> data = noaa_wildfires.get_hms_fires(get=my_get)
     """
-    return _get_latest("fire", get_hms_fires_for_day, date, verbose, timeout)
+    return _get_latest("fire", get_hms_fires_for_day, date, verbose, timeout, get)
 
 
 def get_hms_smoke(
     date: datetime.date | str | None = None,
     verbose: bool = False,
     timeout: float = DEFAULT_TIMEOUT,
+    *,
+    get: Fetcher | None = None,
 ) -> FeatureCollection:
     """Get smoke from the Hazard Mapping System satellites.
 
@@ -102,6 +112,9 @@ def get_hms_smoke(
             "2026-11-17". Defaults to the latest day with smoke.
         verbose: Print each request to standard error. Defaults to False.
         timeout: Seconds to wait for NOAA on each try. Defaults to 60.
+        get: A function that makes the web request, such as ``requests.get``
+            (the default). Pass your own to add retries, logging or custom
+            headers. It is called as ``get(url, timeout=seconds)``.
 
     Returns:
         A GeoJSON feature collection with one polygon for each smoke area.
@@ -122,14 +135,17 @@ def get_hms_smoke(
         >>> import noaa_wildfires
         >>> data = noaa_wildfires.get_hms_smoke()
         >>> data = noaa_wildfires.get_hms_smoke("2026-11-17", timeout=30)
+        >>> data = noaa_wildfires.get_hms_smoke(get=my_get)
     """
-    return _get_latest("smoke", get_hms_smoke_for_day, date, verbose, timeout)
+    return _get_latest("smoke", get_hms_smoke_for_day, date, verbose, timeout, get)
 
 
 def get_hms_fire_records(
     date: datetime.date | str | None = None,
     verbose: bool = False,
     timeout: float = DEFAULT_TIMEOUT,
+    *,
+    get: Fetcher | None = None,
 ) -> list[HmsFire]:
     """Get fires from the Hazard Mapping System satellites, as typed records.
 
@@ -142,6 +158,9 @@ def get_hms_fire_records(
             "2026-11-17". Defaults to the latest day with detections.
         verbose: Print each request to standard error. Defaults to False.
         timeout: Seconds to wait for NOAA on each try. Defaults to 60.
+        get: A function that makes the web request, such as ``requests.get``
+            (the default). Pass your own to add retries, logging or custom
+            headers. It is called as ``get(url, timeout=seconds)``.
 
     Returns:
         A list of ``HmsFire`` records, one for each detection.
@@ -157,7 +176,7 @@ def get_hms_fire_records(
         >>> for fire in noaa_wildfires.get_hms_fire_records():
         ...     print(fire.observed_at, fire.latitude, fire.longitude, fire.frp)
     """
-    data = get_hms_fires(date, verbose, timeout)
+    data = get_hms_fires(date, verbose, timeout, get=get)
     try:
         return [HmsFire.from_properties(f["properties"]) for f in data["features"]]
     except ValueError as error:
@@ -168,6 +187,8 @@ def get_hms_smoke_records(
     date: datetime.date | str | None = None,
     verbose: bool = False,
     timeout: float = DEFAULT_TIMEOUT,
+    *,
+    get: Fetcher | None = None,
 ) -> list[HmsSmoke]:
     """Get smoke from the Hazard Mapping System satellites, as typed records.
 
@@ -179,6 +200,9 @@ def get_hms_smoke_records(
             "2026-11-17". Defaults to the latest day with smoke.
         verbose: Print each request to standard error. Defaults to False.
         timeout: Seconds to wait for NOAA on each try. Defaults to 60.
+        get: A function that makes the web request, such as ``requests.get``
+            (the default). Pass your own to add retries, logging or custom
+            headers. It is called as ``get(url, timeout=seconds)``.
 
     Returns:
         A list of ``HmsSmoke`` records, one for each smoke area.
@@ -194,7 +218,7 @@ def get_hms_smoke_records(
         >>> for smoke in noaa_wildfires.get_hms_smoke_records():
         ...     print(smoke.density, smoke.start, smoke.end)
     """
-    data = get_hms_smoke(date, verbose, timeout)
+    data = get_hms_smoke(date, verbose, timeout, get=get)
     try:
         return [HmsSmoke.from_feature(f) for f in data["features"]]
     except ValueError as error:
@@ -205,6 +229,8 @@ def get_hms_fires_for_day(
     day: datetime.date,
     verbose: bool = False,
     timeout: float = DEFAULT_TIMEOUT,
+    *,
+    get: Fetcher | None = None,
 ) -> FeatureCollection | None:
     """Download the fire file for one day.
 
@@ -212,6 +238,9 @@ def get_hms_fires_for_day(
         day: The day to download.
         verbose: Print each request to standard error. Defaults to False.
         timeout: Seconds to wait for NOAA on each try. Defaults to 60.
+        get: A function that makes the web request, such as ``requests.get``
+            (the default). Pass your own to add retries, logging or custom
+            headers. It is called as ``get(url, timeout=seconds)``.
 
     Returns:
         A GeoJSON feature collection, or None if NOAA has no file for that day.
@@ -225,7 +254,7 @@ def get_hms_fires_for_day(
         >>> data = get_hms_fires_for_day(datetime.date(2026, 11, 17))
     """
     url = fire_url(day)
-    content = download(url, verbose, timeout)
+    content = download(url, verbose, timeout, get=get)
     if content is None:
         return None
     try:
@@ -257,6 +286,8 @@ def get_hms_smoke_for_day(
     day: datetime.date,
     verbose: bool = False,
     timeout: float = DEFAULT_TIMEOUT,
+    *,
+    get: Fetcher | None = None,
 ) -> FeatureCollection | None:
     """Download the smoke file for one day.
 
@@ -264,6 +295,9 @@ def get_hms_smoke_for_day(
         day: The day to download.
         verbose: Print each request to standard error. Defaults to False.
         timeout: Seconds to wait for NOAA on each try. Defaults to 60.
+        get: A function that makes the web request, such as ``requests.get``
+            (the default). Pass your own to add retries, logging or custom
+            headers. It is called as ``get(url, timeout=seconds)``.
 
     Returns:
         A GeoJSON feature collection, or None if NOAA has no file for that day.
@@ -277,7 +311,7 @@ def get_hms_smoke_for_day(
         >>> data = get_hms_smoke_for_day(datetime.date(2026, 11, 17))
     """
     url = smoke_url(day)
-    content = download(url, verbose, timeout)
+    content = download(url, verbose, timeout, get=get)
     if content is None:
         return None
     try:
@@ -335,10 +369,11 @@ def _today() -> datetime.date:
 
 def _get_latest(
     kind: str,
-    reader: Callable[[datetime.date, bool, float], FeatureCollection | None],
+    reader: Callable[..., FeatureCollection | None],
     date: datetime.date | str | None,
     verbose: bool,
     timeout: float,
+    get: Fetcher | None,
 ) -> FeatureCollection:
     """Read one day's file, or find the latest day that has something in it.
 
@@ -348,6 +383,7 @@ def _get_latest(
         date: The day asked for, or None for the latest.
         verbose: Print each request to standard error.
         timeout: Seconds to wait for NOAA on each try.
+        get: The caller's request function, or None to use ``requests.get``.
 
     Returns:
         A GeoJSON feature collection.
@@ -356,12 +392,12 @@ def _get_latest(
         NOAADataError: If there is nothing to return.
 
     Examples:
-        >>> data = _get_latest("fire", get_hms_fires_for_day, None, False, 60.0)
+        >>> data = _get_latest("fire", get_hms_fires_for_day, None, False, 60.0, None)
     """
     if date is not None:
         if isinstance(date, str):
             date = datetime.date.fromisoformat(date)
-        data = reader(date, verbose, timeout)
+        data = reader(date, verbose, timeout, get=get)
         if data is None:
             raise NOAADataError(f"NOAA has no {kind} file for {date}")
         return data
@@ -369,7 +405,7 @@ def _get_latest(
     today = _today()
     for days_back in range(DAYS_TO_LOOK_BACK + 1):
         day = today - datetime.timedelta(days=days_back)
-        data = reader(day, verbose, timeout)
+        data = reader(day, verbose, timeout, get=get)
         if data is not None and data["features"]:
             return data
     raise NOAADataError(
