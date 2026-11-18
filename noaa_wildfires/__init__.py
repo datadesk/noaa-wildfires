@@ -13,6 +13,8 @@ import requests
 import shapefile
 from geojson import Feature, FeatureCollection, Point
 
+from .records import HmsFire, HmsSmoke
+
 __all__ = [
     "fire_url",
     "get_hms_fires",
@@ -95,6 +97,57 @@ def get_hms_smoke(date: datetime.date | str | None = None) -> FeatureCollection:
         >>> data = noaa_wildfires.get_hms_smoke("2026-11-17")
     """
     return _get_latest("smoke", get_hms_smoke_for_day, date)
+
+
+def get_hms_fire_records(date: datetime.date | str | None = None) -> list[HmsFire]:
+    """Get fires from the Hazard Mapping System satellites, as typed records.
+
+    This reads the same file as ``get_hms_fires``, with the numbers already
+    parsed and one timezone-aware UTC ``observed_at`` time. See ``HmsFire`` for
+    every field.
+
+    Args:
+        date: The day to download, as a ``datetime.date`` or text like
+            "2026-11-17". Defaults to the latest day with detections.
+
+    Returns:
+        A list of ``HmsFire`` records, one for each detection.
+
+    Raises:
+        ValueError: If NOAA has no file for the day, or a row cannot be read.
+
+    Examples:
+        >>> import noaa_wildfires
+        >>> for fire in noaa_wildfires.get_hms_fire_records():
+        ...     print(fire.observed_at, fire.latitude, fire.longitude, fire.frp)
+    """
+    data = get_hms_fires(date)
+    return [HmsFire.from_properties(f["properties"]) for f in data["features"]]
+
+
+def get_hms_smoke_records(date: datetime.date | str | None = None) -> list[HmsSmoke]:
+    """Get smoke from the Hazard Mapping System satellites, as typed records.
+
+    This reads the same file as ``get_hms_smoke``, with the times parsed into
+    timezone-aware UTC datetimes. See ``HmsSmoke`` for every field.
+
+    Args:
+        date: The day to download, as a ``datetime.date`` or text like
+            "2026-11-17". Defaults to the latest day with smoke.
+
+    Returns:
+        A list of ``HmsSmoke`` records, one for each smoke area.
+
+    Raises:
+        ValueError: If NOAA has no file for the day, or a row cannot be read.
+
+    Examples:
+        >>> import noaa_wildfires
+        >>> for smoke in noaa_wildfires.get_hms_smoke_records():
+        ...     print(smoke.density, smoke.start, smoke.end)
+    """
+    data = get_hms_smoke(date)
+    return [HmsSmoke.from_feature(f) for f in data["features"]]
 
 
 def get_hms_fires_for_day(day: datetime.date) -> FeatureCollection | None:
