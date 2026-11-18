@@ -471,7 +471,8 @@ def _read_shapefile(shp: bytes, shx: bytes, dbf: bytes) -> FeatureCollection:
     for i, (shape, record) in enumerate(
         zip(reader.shapes(), reader.records(), strict=True)
     ):
-        geometry = None if shape is None else _round(shape.__geo_interface__)
+        has_outline = shape is not None and shape.shapeType != shapefile.NULL
+        geometry = _round(shape.__geo_interface__) if has_outline else None
         whole = {
             "type": "Feature",
             "id": str(i),

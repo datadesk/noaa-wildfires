@@ -236,6 +236,8 @@ Run the offline tests, the linter and the type checker.
 make check
 ```
 
+`make check` runs the tests with coverage and fails if coverage of the package, counting branches, drops below 95%. It prints the lines that no test reached. For a quicker run without coverage, use `make test-fast`.
+
 The tests that call NOAA's real website are skipped by default. Run them with `make test-live`.
 
 ## Developing the CLI

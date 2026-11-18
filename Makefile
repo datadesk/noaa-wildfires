@@ -17,7 +17,10 @@ fix: ## Fix lint problems and format the code
 type-check: ## Check types with ty
 	uv run ty check
 
-test: ## Run the offline tests
+test: ## Run the offline tests with coverage, failing under the 95% floor
+	uv run pytest --cov --cov-report=term-missing
+
+test-fast: ## Run the offline tests without coverage
 	uv run pytest
 
 test-live: ## Run the tests that call NOAA's real website

@@ -50,6 +50,7 @@ dev = [
 ]
 test = [
     "pytest",
+    "pytest-cov",
 ]
 docs = [
     "myst-parser",
@@ -78,6 +79,20 @@ testpaths = ["tests"]
 addopts = ["--strict-markers", "-m", "not live"]
 markers = [
     "live: talks to the real NOAA website, so it can be slow or fail when NOAA is down",
+]
+
+[tool.coverage.run]
+source = ["noaa_wildfires"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "^\\s*\\.\\.\\.$",
+    "if __name__ == .__main__.:",
 ]
 
 [tool.ty.environment]
