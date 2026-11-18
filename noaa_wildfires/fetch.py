@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 import sys
 import time
+from typing import Protocol
 
 import requests
 
@@ -20,11 +21,53 @@ RETRY_STATUS_CODES = frozenset({408, 429})
 """Statuses worth another try. Every 5xx status is also worth another try."""
 
 
+class Reply(Protocol):
+    """What a request function must hand back: a status code and the file's bytes.
+
+    A ``requests.Response`` fits this.
+    """
+
+    @property
+    def status_code(self) -> int:
+        """The web status, such as 200 or 404."""
+        ...
+
+    @property
+    def content(self) -> bytes:
+        """The body of the reply, as bytes."""
+        ...
+
+
+class Fetcher(Protocol):
+    """A function that makes a web request for this package.
+
+    Pass one as ``get`` to add retries, logging or custom headers. ``requests.get``
+    fits this, and is the default.
+
+    Examples:
+        >>> import requests
+        >>> fetcher: Fetcher = requests.get
+    """
+
+    def __call__(self, url: str, *, timeout: float) -> Reply:
+        """Request a web address.
+
+        Args:
+            url: The address to request.
+            timeout: The seconds to wait before giving up.
+
+        Returns:
+            The reply.
+        """
+        ...
+
+
 def download(
     url: str,
     verbose: bool = False,
     timeout: float = DEFAULT_TIMEOUT,
     tries: int = DEFAULT_TRIES,
+    get: Fetcher | None = None,
 ) -> bytes | None:
     """Download one of NOAA's files.
 
@@ -39,6 +82,11 @@ def download(
         verbose: Print each request to standard error. Defaults to False.
         timeout: Seconds to wait for NOAA on each try. Defaults to 60.
         tries: How many tries to make in all. Defaults to 4.
+        get: A function that makes the web request, such as ``requests.get``
+            (the default). It is called as ``get(url, timeout=seconds)`` and
+            must return something with ``status_code`` and ``content``. Its
+            ``requests`` errors are retried like the default's. Any other error
+            it raises is passed on untouched.
 
     Returns:
         The bytes of the file, or None if NOAA says there is no such file.
@@ -52,7 +100,9 @@ def download(
         ...     "https://satepsanone.nesdis.noaa.gov/pub/FIRE/web/HMS/Fire_Points/Text/2026/11/hms_fire20261117.txt"
         ... )
         >>> content = download("https://example.com/file", timeout=120, tries=2)
+        >>> content = download("https://example.com/file", get=my_get)
     """
+    fetch: Fetcher = get or requests.get
     problem = None
     for attempt in range(max(tries, 1)):
         if attempt:
@@ -60,7 +110,7 @@ def download(
         if verbose:
             print(f"Requesting {url}", file=sys.stderr)
         try:
-            response = requests.get(url, timeout=timeout)
+            response = fetch(url, timeout=timeout)
         except (requests.ConnectionError, requests.Timeout) as error:
             problem = NOAAError(f"Could not reach NOAA at {url}: {error}", url=url)
             continue
