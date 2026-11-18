@@ -12,25 +12,25 @@ jobs:
       - id: checkout
         name: Checkout
         uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pipenv'
+          fetch-depth: 1
 
-      - name: Install pipenv
-        run: curl https://raw.githubusercontent.com/pypa/pipenv/master/get-pipenv.py | python
+      - id: install-uv
+        name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: 'uv.lock'
 
-      - id: pipenv-install
-        name: Install Python dependencies
-        run: pipenv sync --dev
+      - name: Setup
+        run: uv sync
+        shell: bash
 
       - id: make
-        name: Run make command
+        name: Run scrape command
         run: |
-          pipenv run python setup.py install
-          pipenv run noaawildfires hms-fires > data/hms-fires.json
-          pipenv run noaawildfires hms-smoke > data/hms-smoke.json
+          uv run noaawildfires hms-fires > data/hms-fires.json
+          uv run noaawildfires hms-smoke > data/hms-smoke.json
         shell: bash
 
       - name: Datestamp
