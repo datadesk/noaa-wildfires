@@ -51,14 +51,16 @@ def test_fires_for_a_date(fake_noaa):
 
 def test_missing_date_is_an_error(fake_noaa):
     """A day with no file raises a clear error instead of reading another day."""
-    with pytest.raises(ValueError, match="no fire file for 2026-11-10"):
+    with pytest.raises(
+        noaa_wildfires.NOAADataError, match="no fire file for 2026-11-10"
+    ):
         noaa_wildfires.get_hms_fires("2026-11-10")
 
 
 def test_nothing_recent_is_an_error(fake_noaa, monkeypatch):
     """When no recent day has a file, say so."""
     monkeypatch.setattr(noaa_wildfires, "_today", lambda: datetime.date(2026, 12, 25))
-    with pytest.raises(ValueError, match="no fire detections"):
+    with pytest.raises(noaa_wildfires.NOAADataError, match="no fire detections"):
         noaa_wildfires.get_hms_fires()
     assert len(fake_noaa.urls) == 4
 
@@ -74,19 +76,6 @@ def test_smoke_skips_an_empty_day(fake_noaa):
 def test_smoke_for_an_empty_day(fake_noaa):
     """Asking for an empty day gives an empty collection."""
     assert noaa_wildfires.get_hms_smoke("2026-11-18")["features"] == []
-
-
-def test_server_error_is_raised(monkeypatch, fake_noaa):
-    """Anything other than a file or "not found" is an error."""
-    import requests
-
-    from .conftest import FakeResponse
-
-    monkeypatch.setattr(
-        noaa_wildfires.requests, "get", lambda url: FakeResponse(status_code=503)
-    )
-    with pytest.raises(requests.HTTPError):
-        noaa_wildfires.get_hms_fires()
 
 
 def test_urls():

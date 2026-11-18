@@ -26,6 +26,14 @@ class FakeResponse:
             raise requests.HTTPError(f"status {self.status_code}")
 
 
+@pytest.fixture(autouse=True)
+def no_waiting(monkeypatch):
+    """Skip the pauses between retries so the tests run fast."""
+    from noaa_wildfires import fetch
+
+    monkeypatch.setattr(fetch.time, "sleep", lambda seconds: None)
+
+
 @pytest.fixture
 def fake_noaa(monkeypatch):
     """Replace ``requests.get`` with a fake that serves the saved samples.
@@ -35,6 +43,7 @@ def fake_noaa(monkeypatch):
     in ``fake_noaa.urls``. Today is pretended to be 2026-11-18.
     """
     import noaa_wildfires
+    from noaa_wildfires import fetch
 
     class Fake:
         urls: list[str]
@@ -49,6 +58,6 @@ def fake_noaa(monkeypatch):
             return FakeResponse(status_code=404)
         return FakeResponse(path.read_bytes())
 
-    monkeypatch.setattr(noaa_wildfires.requests, "get", get)
+    monkeypatch.setattr(fetch.requests, "get", get)
     monkeypatch.setattr(noaa_wildfires, "_today", lambda: TODAY)
     return fake

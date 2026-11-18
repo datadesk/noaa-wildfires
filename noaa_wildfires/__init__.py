@@ -7,20 +7,29 @@ import datetime
 import io
 import struct
 import zipfile
+from collections.abc import Callable
 from typing import Any
 
-import requests
 import shapefile
 from geojson import Feature, FeatureCollection, Point
 
+from .errors import NOAADataError, NOAAError
+from .fetch import DEFAULT_TIMEOUT, download
 from .records import HmsFire, HmsSmoke
 
 __all__ = [
+    "DEFAULT_TIMEOUT",
+    "HmsFire",
+    "HmsSmoke",
+    "NOAADataError",
+    "NOAAError",
     "fire_url",
+    "get_hms_fire_records",
     "get_hms_fires",
     "get_hms_fires_for_day",
     "get_hms_smoke",
     "get_hms_smoke_for_day",
+    "get_hms_smoke_records",
     "smoke_url",
 ]
 
@@ -31,7 +40,11 @@ DAYS_TO_LOOK_BACK = 3
 """How many days before today to try when today's file is missing or empty."""
 
 
-def get_hms_fires(date: datetime.date | str | None = None) -> FeatureCollection:
+def get_hms_fires(
+    date: datetime.date | str | None = None,
+    verbose: bool = False,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> FeatureCollection:
     """Get fires from the Hazard Mapping System satellites.
 
     NOAA publishes one file of fire detections for each day, in UTC. With no
@@ -42,6 +55,8 @@ def get_hms_fires(date: datetime.date | str | None = None) -> FeatureCollection:
     Args:
         date: The day to download, as a ``datetime.date`` or text like
             "2026-11-17". Defaults to the latest day with detections.
+        verbose: Print each request to standard error. Defaults to False.
+        timeout: Seconds to wait for NOAA on each try. Defaults to 60.
 
     Returns:
         A GeoJSON feature collection with one point for each fire. The
@@ -56,18 +71,25 @@ def get_hms_fires(date: datetime.date | str | None = None) -> FeatureCollection:
         ``Method``, ``Ecosys`` is ``Ecosystem`` and ``Fire RadPower`` is ``FRP``.
 
     Raises:
-        ValueError: If NOAA has no file for the day you asked for, or for any of
-            the recent days when you did not ask for one.
+        NOAAError: If NOAA cannot be reached after several tries, or answers
+            with an error.
+        NOAADataError: If NOAA has no file for the day you asked for, or for
+            any of the recent days when you did not ask for one, or if the
+            file cannot be read. This is also a ``ValueError``.
 
     Examples:
         >>> import noaa_wildfires
         >>> data = noaa_wildfires.get_hms_fires()
-        >>> data = noaa_wildfires.get_hms_fires("2026-11-17")
+        >>> data = noaa_wildfires.get_hms_fires("2026-11-17", timeout=30)
     """
-    return _get_latest("fire", get_hms_fires_for_day, date)
+    return _get_latest("fire", get_hms_fires_for_day, date, verbose, timeout)
 
 
-def get_hms_smoke(date: datetime.date | str | None = None) -> FeatureCollection:
+def get_hms_smoke(
+    date: datetime.date | str | None = None,
+    verbose: bool = False,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> FeatureCollection:
     """Get smoke from the Hazard Mapping System satellites.
 
     NOAA publishes one file of smoke polygons for each day, in UTC. With no
@@ -78,6 +100,8 @@ def get_hms_smoke(date: datetime.date | str | None = None) -> FeatureCollection:
     Args:
         date: The day to download, as a ``datetime.date`` or text like
             "2026-11-17". Defaults to the latest day with smoke.
+        verbose: Print each request to standard error. Defaults to False.
+        timeout: Seconds to wait for NOAA on each try. Defaults to 60.
 
     Returns:
         A GeoJSON feature collection with one polygon for each smoke area.
@@ -88,18 +112,25 @@ def get_hms_smoke(date: datetime.date | str | None = None) -> FeatureCollection:
         smoke ``Density`` is now the word Light, Medium or Heavy, not a number.
 
     Raises:
-        ValueError: If NOAA has no file for the day you asked for, or for any of
-            the recent days when you did not ask for one.
+        NOAAError: If NOAA cannot be reached after several tries, or answers
+            with an error.
+        NOAADataError: If NOAA has no file for the day you asked for, or for
+            any of the recent days when you did not ask for one, or if the
+            file cannot be read. This is also a ``ValueError``.
 
     Examples:
         >>> import noaa_wildfires
         >>> data = noaa_wildfires.get_hms_smoke()
-        >>> data = noaa_wildfires.get_hms_smoke("2026-11-17")
+        >>> data = noaa_wildfires.get_hms_smoke("2026-11-17", timeout=30)
     """
-    return _get_latest("smoke", get_hms_smoke_for_day, date)
+    return _get_latest("smoke", get_hms_smoke_for_day, date, verbose, timeout)
 
 
-def get_hms_fire_records(date: datetime.date | str | None = None) -> list[HmsFire]:
+def get_hms_fire_records(
+    date: datetime.date | str | None = None,
+    verbose: bool = False,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> list[HmsFire]:
     """Get fires from the Hazard Mapping System satellites, as typed records.
 
     This reads the same file as ``get_hms_fires``, with the numbers already
@@ -109,23 +140,35 @@ def get_hms_fire_records(date: datetime.date | str | None = None) -> list[HmsFir
     Args:
         date: The day to download, as a ``datetime.date`` or text like
             "2026-11-17". Defaults to the latest day with detections.
+        verbose: Print each request to standard error. Defaults to False.
+        timeout: Seconds to wait for NOAA on each try. Defaults to 60.
 
     Returns:
         A list of ``HmsFire`` records, one for each detection.
 
     Raises:
-        ValueError: If NOAA has no file for the day, or a row cannot be read.
+        NOAAError: If NOAA cannot be reached after several tries, or answers
+            with an error.
+        NOAADataError: If NOAA has no file for the day, or a row cannot be
+            read. This is also a ``ValueError``.
 
     Examples:
         >>> import noaa_wildfires
         >>> for fire in noaa_wildfires.get_hms_fire_records():
         ...     print(fire.observed_at, fire.latitude, fire.longitude, fire.frp)
     """
-    data = get_hms_fires(date)
-    return [HmsFire.from_properties(f["properties"]) for f in data["features"]]
+    data = get_hms_fires(date, verbose, timeout)
+    try:
+        return [HmsFire.from_properties(f["properties"]) for f in data["features"]]
+    except ValueError as error:
+        raise NOAADataError(str(error)) from error
 
 
-def get_hms_smoke_records(date: datetime.date | str | None = None) -> list[HmsSmoke]:
+def get_hms_smoke_records(
+    date: datetime.date | str | None = None,
+    verbose: bool = False,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> list[HmsSmoke]:
     """Get smoke from the Hazard Mapping System satellites, as typed records.
 
     This reads the same file as ``get_hms_smoke``, with the times parsed into
@@ -134,70 +177,115 @@ def get_hms_smoke_records(date: datetime.date | str | None = None) -> list[HmsSm
     Args:
         date: The day to download, as a ``datetime.date`` or text like
             "2026-11-17". Defaults to the latest day with smoke.
+        verbose: Print each request to standard error. Defaults to False.
+        timeout: Seconds to wait for NOAA on each try. Defaults to 60.
 
     Returns:
         A list of ``HmsSmoke`` records, one for each smoke area.
 
     Raises:
-        ValueError: If NOAA has no file for the day, or a row cannot be read.
+        NOAAError: If NOAA cannot be reached after several tries, or answers
+            with an error.
+        NOAADataError: If NOAA has no file for the day, or a row cannot be
+            read. This is also a ``ValueError``.
 
     Examples:
         >>> import noaa_wildfires
         >>> for smoke in noaa_wildfires.get_hms_smoke_records():
         ...     print(smoke.density, smoke.start, smoke.end)
     """
-    data = get_hms_smoke(date)
-    return [HmsSmoke.from_feature(f) for f in data["features"]]
+    data = get_hms_smoke(date, verbose, timeout)
+    try:
+        return [HmsSmoke.from_feature(f) for f in data["features"]]
+    except ValueError as error:
+        raise NOAADataError(str(error)) from error
 
 
-def get_hms_fires_for_day(day: datetime.date) -> FeatureCollection | None:
+def get_hms_fires_for_day(
+    day: datetime.date,
+    verbose: bool = False,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> FeatureCollection | None:
     """Download the fire file for one day.
 
     Args:
         day: The day to download.
+        verbose: Print each request to standard error. Defaults to False.
+        timeout: Seconds to wait for NOAA on each try. Defaults to 60.
 
     Returns:
         A GeoJSON feature collection, or None if NOAA has no file for that day.
+
+    Raises:
+        NOAAError: If NOAA cannot be reached after several tries, or answers
+            with an error.
+        NOAADataError: If the file cannot be read.
 
     Examples:
         >>> data = get_hms_fires_for_day(datetime.date(2026, 11, 17))
     """
-    content = _download(fire_url(day))
+    url = fire_url(day)
+    content = download(url, verbose, timeout)
     if content is None:
         return None
-    lines = content.decode("utf-8").splitlines()
-    reader = csv.DictReader(lines, delimiter=",")
+    try:
+        lines = content.decode("utf-8").splitlines()
+        reader = csv.DictReader(lines, delimiter=",")
+        columns = [name.strip() for name in reader.fieldnames or []]
+        if "Lon" not in columns or "Lat" not in columns:
+            raise ValueError("it has no Lon and Lat columns")
 
-    # Tidy it up, keeping NOAA's column names
-    tidy_reader = []
-    for row in reader:
-        tidy_row = {k.strip(): (v or "").strip() for k, v in row.items()}
-        tidy_reader.append(tidy_row)
+        # Tidy it up, keeping NOAA's column names
+        tidy_reader = []
+        for row in reader:
+            tidy_row = {k.strip(): (v or "").strip() for k, v in row.items()}
+            tidy_reader.append(tidy_row)
 
-    # Convert it to GeoJSON
-    features = [
-        Feature(geometry=Point(map(float, [r["Lon"], r["Lat"]])), properties=r)
-        for r in tidy_reader
-    ]
+        # Convert it to GeoJSON
+        features = [
+            Feature(geometry=Point(map(float, [r["Lon"], r["Lat"]])), properties=r)
+            for r in tidy_reader
+        ]
+    except (UnicodeDecodeError, KeyError, ValueError, AttributeError) as error:
+        raise NOAADataError(
+            f"The file at {url} does not look like a fire file: {error}", url=url
+        ) from error
     return FeatureCollection(features)
 
 
-def get_hms_smoke_for_day(day: datetime.date) -> FeatureCollection | None:
+def get_hms_smoke_for_day(
+    day: datetime.date,
+    verbose: bool = False,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> FeatureCollection | None:
     """Download the smoke file for one day.
 
     Args:
         day: The day to download.
+        verbose: Print each request to standard error. Defaults to False.
+        timeout: Seconds to wait for NOAA on each try. Defaults to 60.
 
     Returns:
         A GeoJSON feature collection, or None if NOAA has no file for that day.
 
+    Raises:
+        NOAAError: If NOAA cannot be reached after several tries, or answers
+            with an error.
+        NOAADataError: If the file cannot be read.
+
     Examples:
         >>> data = get_hms_smoke_for_day(datetime.date(2026, 11, 17))
     """
-    content = _download(smoke_url(day))
+    url = smoke_url(day)
+    content = download(url, verbose, timeout)
     if content is None:
         return None
-    return _parse_shapefile_zip(content)
+    try:
+        return _parse_shapefile_zip(content)
+    except ValueError as error:
+        raise NOAADataError(
+            f"The file at {url} is not a zipped shapefile: {error}", url=url
+        ) from error
 
 
 def fire_url(day: datetime.date) -> str:
@@ -245,61 +333,48 @@ def _today() -> datetime.date:
     return datetime.datetime.now(datetime.UTC).date()
 
 
-def _get_latest(kind, reader, date) -> FeatureCollection:
+def _get_latest(
+    kind: str,
+    reader: Callable[[datetime.date, bool, float], FeatureCollection | None],
+    date: datetime.date | str | None,
+    verbose: bool,
+    timeout: float,
+) -> FeatureCollection:
     """Read one day's file, or find the latest day that has something in it.
 
     Args:
         kind: The word "fire" or "smoke", used in error messages.
         reader: The function that downloads one day.
         date: The day asked for, or None for the latest.
+        verbose: Print each request to standard error.
+        timeout: Seconds to wait for NOAA on each try.
 
     Returns:
         A GeoJSON feature collection.
 
     Raises:
-        ValueError: If there is nothing to return.
+        NOAADataError: If there is nothing to return.
 
     Examples:
-        >>> data = _get_latest("fire", get_hms_fires_for_day, None)
+        >>> data = _get_latest("fire", get_hms_fires_for_day, None, False, 60.0)
     """
     if date is not None:
         if isinstance(date, str):
             date = datetime.date.fromisoformat(date)
-        data = reader(date)
+        data = reader(date, verbose, timeout)
         if data is None:
-            raise ValueError(f"NOAA has no {kind} file for {date}")
+            raise NOAADataError(f"NOAA has no {kind} file for {date}")
         return data
 
     today = _today()
     for days_back in range(DAYS_TO_LOOK_BACK + 1):
-        data = reader(today - datetime.timedelta(days=days_back))
+        day = today - datetime.timedelta(days=days_back)
+        data = reader(day, verbose, timeout)
         if data is not None and data["features"]:
             return data
-    raise ValueError(
+    raise NOAADataError(
         f"NOAA has no {kind} detections for {today} or the {DAYS_TO_LOOK_BACK} days before it"
     )
-
-
-def _download(url: str) -> bytes | None:
-    """Download a file.
-
-    Args:
-        url: The address.
-
-    Returns:
-        The bytes of the file, or None if NOAA says there is no such file.
-
-    Raises:
-        requests.HTTPError: If NOAA answers with any other error.
-
-    Examples:
-        >>> content = _download(fire_url(datetime.date(2026, 11, 17)))
-    """
-    r = requests.get(url)
-    if r.status_code == 404:
-        return None
-    r.raise_for_status()
-    return bytes(r.content)
 
 
 def _parse_shapefile_zip(content: bytes) -> FeatureCollection:
