@@ -10,7 +10,7 @@ Download wildfires data from NOAA satellites
 ## Installation
 
 ```sh
-pipenv install noaa-wildfires
+uv add noaa-wildfires
 ```
 
 ## Command-line usage
@@ -67,21 +67,23 @@ noaa_wildfires.get_hms_smoke()
 Install dependencies for development.
 
 ```sh
-pipenv install --dev
+uv sync --all-groups
 ```
 
-Run tests.
+Run the offline tests, the linter and the type checker.
 
 ```sh
-pipenv run python test.py
+make check
 ```
+
+The tests that call NOAA's real website are skipped by default. Run them with `make test-live`.
 
 ## Developing the CLI
 
-The command-line interface is implemented using Click and setuptools. To install it locally for development inside your virtual environment, run the following installation command, as [prescribed by the Click documentation](https://click.palletsprojects.com/en/7.x/setuptools/#setuptools-integration).
+The command-line interface is implemented using Click. `uv sync` installs the package in editable form, so the `noaawildfires` command is ready to use with `uv run`.
 
 ```sh
-pipenv run pip install --editable .
+uv run noaawildfires --help
 ```
 
 ## Other resources

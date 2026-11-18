@@ -1,9 +1,8 @@
 import csv
 import io
-import zipfile
 
-import fiona
 import requests
+import shapefile
 from geojson import Feature, FeatureCollection, Point
 
 
@@ -44,23 +43,49 @@ def _parse_shapefiles(files):
     """
     Download the provided list of shapefile components and convert them to GeoJSON.
     """
-    # Create in-memory file
-    buffer = io.BytesIO()
+    # Download each piece of the shapefile
+    pieces = {}
+    for name in files:
+        r = requests.get(f"https://satepsanone.nesdis.noaa.gov/pub/FIRE/HMS/GIS/{name}")
+        pieces[name.rsplit(".", 1)[-1]] = bytes(r.content)
 
-    # Turn it into a zipfile
-    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        # Download each piece of the shapefile ...
-        for name in files:
-            r = requests.get(
-                f"https://satepsanone.nesdis.noaa.gov/pub/FIRE/HMS/GIS/{name}"
-            )
-            # ... and add it to the in-memory zipfile
-            zf.writestr(name, bytes(r.content))
+    # Read the shapefile and convert it to GeoJSON
+    return _read_shapefile(pieces["shp"], pieces["shx"], pieces["dbf"])
 
-    # Feed the in-memory file to fiona, which can read the shapefile
-    shp = fiona.BytesCollection(buffer.getvalue())
 
-    # Convert the shapefile to GeoJSON and return it
-    return FeatureCollection(
-        [Feature(geometry=d["geometry"], properties=d) for d in shp]
+def _read_shapefile(shp, shx, dbf):
+    """
+    Convert the bytes of a shapefile's three main pieces to GeoJSON.
+
+    Each feature keeps the odd shape it has always had: its properties hold a
+    copy of the whole feature, with the attributes inside under "properties".
+    """
+    reader = shapefile.Reader(
+        shp=io.BytesIO(shp), shx=io.BytesIO(shx), dbf=io.BytesIO(dbf)
     )
+    features = []
+    for i, (shape, record) in enumerate(
+        zip(reader.shapes(), reader.records(), strict=True)
+    ):
+        geometry = None if shape is None else _round(shape.__geo_interface__)
+        whole = {
+            "type": "Feature",
+            "id": str(i),
+            "geometry": geometry,
+            "properties": {} if record is None else record.as_dict(),
+        }
+        features.append(Feature(geometry=geometry, properties=whole))
+    return FeatureCollection(features)
+
+
+def _round(value):
+    """
+    Round every coordinate to the six decimal places NOAA publishes.
+    """
+    if isinstance(value, dict):
+        return {k: _round(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_round(v) for v in value]
+    if isinstance(value, float):
+        return round(value, 6)
+    return value
