@@ -14,9 +14,11 @@ pytestmark = pytest.mark.live
 
 def test_live_fires():
     """Download the latest fires."""
-    noaa_wildfires.get_hms_fires()
+    data = noaa_wildfires.get_hms_fires()
+    assert data["features"]
 
 
 def test_live_smoke():
     """Download the latest smoke."""
-    noaa_wildfires.get_hms_smoke()
+    data = noaa_wildfires.get_hms_smoke()
+    assert data["features"]

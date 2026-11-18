@@ -1,6 +1,0 @@
-        Lon,        Lat, YearDay, Time,       Satellite, Method of Detect, Ecosys, Fire RadPower
- -68.500916,  18.726505, 2022199, 0533,       SUOMI NPP,            VIIRS,     24,         1.150
- -68.501320,  18.724760, 2022199, 0533,       SUOMI NPP,            VIIRS,     24,         1.397
--101.541840,  55.684216, 2022199, 0845,       SUOMI NPP,            VIIRS,     21,         2.165
--109.250214,  57.190540, 2022199, 1839,       SUOMI NPP,         ANALYSIS,     21,      -999.000
- -99.393158,  54.971855, 2022199, 2010,       GOES-EAST,              FDC,     23,      -999.000
